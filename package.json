@@ -1,0 +1,13 @@
+{
+  "name": "ascdoc",
+  "version": "0.0.0",
+  "scripts": {
+    "tw": "tailwindcss -i ./styles/base.css -o ./styles/styles.min.css --watch --jit --minify"
+  },
+  "author": "Owais Jamil <info@stormlightlabs.org>",
+  "license": "MIT",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.0.0",
+    "tailwindcss": "^4.0.0"
+  }
+}

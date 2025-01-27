@@ -18,7 +18,9 @@ rustup target add wasm32-unknown-unknown
 Standalone Tailwind [CLI](https://tailwindcss.com/blog/standalone-cli):
 
 ```bash
-npm install -g tailwindcss@latest
+npm install -g tailwindcss @tailwindcss/cli
+
+npx @tailwindcss/cli -i styles.css -o styles.min.css --minify
 ```
 
 Formatter for Leptos `view!` macro:
