@@ -1,3 +1,9 @@
+//! Application commands and entry point.
+//!
+//! Additionally contains functions to access the filesystem for a
+//! workspace via the Core Process. (See https://v2.tauri.app/concept/process-model/#the-core-process)
+
+mod theme;
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {

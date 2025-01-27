@@ -1,5 +1,7 @@
+use icondata::{AiFolderOpenOutlined, SiAsciidoctor};
 use leptos::task::spawn_local;
 use leptos::{ev::SubmitEvent, prelude::*};
+use leptos_icons::Icon;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -41,31 +43,75 @@ pub fn App() -> impl IntoView {
 
     view! {
         <main class="container">
-            <aside>
-                File Explorer
-                <ul>
-                    <li>File 1</li>
-                    <li>File 2</li>
-                    <li>File 3</li>
-                </ul>
+            <aside class="flex flex-col gap-y-1">
+                <section class="flex items-center gap-x-1">
+                    <Icon icon={AiFolderOpenOutlined} {..} class="text-xl" />
+                    <span class="font-medium">Root</span>
+                </section>
+                <section class="ml-6 space-y-1">
+                    <div class="flex items-center gap-x-1">
+                        <Icon icon={AiFolderOpenOutlined} {..} class="text-xl" />
+                        <span class="col-auto">Folder 1</span>
+                    </div>
+                    <div class="ml-6 flex items-center gap-x-1">
+                        <Icon icon={SiAsciidoctor} {..} class="text-xs" />
+                        <span>File 1</span>
+                    </div>
+                    <div class="ml-6 flex items-center gap-x-1">
+                        <Icon icon={SiAsciidoctor} {..} class="text-xs" />
+                        <span>File 2</span>
+                    </div>
+                </section>
+                <section class="ml-6 space-y-1">
+                    <div class="flex items-center gap-x-1">
+                        <Icon icon={AiFolderOpenOutlined} {..} class="text-xl" />
+                        <span class="col-auto">Folder 2</span>
+                    </div>
+                </section>
+                <section class="ml-6 space-y-1">
+                    <div class="flex items-center gap-x-1">
+                        <Icon icon={AiFolderOpenOutlined} {..} class="text-xl" />
+                        <span class="col-auto">Folder 3</span>
+                    </div>
+                </section>
+                <section class="ml-6 space-y-1">
+                    <div class="flex items-center gap-x-1">
+                        <Icon icon={AiFolderOpenOutlined} {..} class="text-xl" />
+                        <span class="col-auto">Folder 4</span>
+                    </div>
+                </section>
             </aside>
             <section>
-                <header>
+                <header class="p-2">
                     Bufferline
                 </header>
                 <article>
-                    <h2>Buffer</h2>
-                    <form class="row" on:submit=greet>
-                        <input
-                            id="greet-input"
-                            placeholder="Enter a name..."
-                            on:input=update_name
-                        />
-                        <button type="submit">"Greet"</button>
-                    </form>
-                    <p>{ move || greet_msg.get() }</p>
+                    <div data-line-numbers>
+                        <span>1</span>
+                        <span>2</span>
+                        <span>3</span>
+                        <span>4</span>
+                        <span>5</span>
+                        <span>6</span>
+                        <span>7</span>
+                        <span>8</span>
+                        <span>9</span>
+                        <span>10</span>
+                    </div>
+                    <div data-buffer>
+                        <h2>Buffer</h2>
+                        <form class="row" on:submit=greet>
+                            <input
+                                id="greet-input"
+                                placeholder="Enter a name..."
+                                on:input=update_name
+                            />
+                            <button type="submit">"Greet"</button>
+                        </form>
+                        <p>{ move || greet_msg.get() }</p>
+                    </div>
                 </article>
-                <footer>
+                <footer class="p-2">
                     Statusline
                 </footer>
             </section>
