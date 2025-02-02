@@ -8,6 +8,7 @@
   "license": "MIT",
   "dependencies": {
     "@tailwindcss/cli": "^4.0.0",
+    "@tauri-apps/plugin-fs": "~2",
     "tailwindcss": "^4.0.0"
   }
 }

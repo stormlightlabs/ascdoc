@@ -29,6 +29,25 @@ Formatter for Leptos `view!` macro:
 cargo install leptosfmt
 ```
 
+Setup Tailwind:
+
+```bash
+pnpm i
+pnpm tw
+```
+
+### Local Development
+
+```bash
+cargo tauri dev
+```
+
+### Format Leptos Macro
+
+```bash
+leptosfmt ./src/**/*.rs
+```
+
 ## Manuals
 
 - [Trunk](https://trunkrs.dev/guide/)
