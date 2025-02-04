@@ -1,11 +1,28 @@
-mod app;
+use iced::widget::{button, text};
+use iced::Element;
 
-use app::*;
-use leptos::prelude::*;
+pub fn main() -> iced::Result {
+    iced::run("A cool counter", update, view)
+}
 
-fn main() {
-    console_error_panic_hook::set_once();
-    mount_to_body(|| {
-        view! { <App /> }
-    })
+fn update(counter: &mut Counter, message: Message) {
+    match message {
+        Message::Increment => counter.value += 1,
+    }
+}
+
+fn view(counter: &Counter) -> Element<Message> {
+    button(text(counter.value))
+        .on_press(Message::Increment)
+        .into()
+}
+
+#[derive(Debug, Clone)]
+enum Message {
+    Increment,
+}
+
+#[derive(Default)]
+struct Counter {
+    value: u64,
 }
