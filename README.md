@@ -1,63 +1,23 @@
 # AsciiDoc Zettlekasten for Desktop
 
-This is a note taking and collecting application for desktop that
-leverages AsciiDoc for markup.
+This is a note taking and collecting application for desktop that leverages
+AsciiDoc for markup. It leverages [`iced`](https://iced.rs) (an Elm-like library)
+to handle the GUI.
 
-## Getting Started/Pre-Requisites
+The goal is to streamline the learning workflows by providing an easy way to
+use a Zettlekasten system and a markup language conducive to book writing.
 
-- Install the Tauri CLI
-- Install the Trunk CLI
-- Add the wasm32 target
+## Setup
 
-```bash
-cargo install tauri-cli --version "^2.0.0" --locked
-cargo install trunk --locked
-rustup target add wasm32-unknown-unknown
-```
-
-Standalone Tailwind [CLI](https://tailwindcss.com/blog/standalone-cli):
+Make sure you have the 2021 edition of Rust installed. Then in the project's
+root dir, run `cargo run`.
 
 ```bash
-npm install -g tailwindcss @tailwindcss/cli
-
-npx @tailwindcss/cli -i styles.css -o styles.min.css --minify
+git clone https://github.com/stormlightlabs/ascdoc.git
+cd ascdoc
+cargo build
+cargo run
 ```
-
-Formatter for Leptos `view!` macro:
-
-```bash
-cargo install leptosfmt
-```
-
-Setup Tailwind:
-
-```bash
-pnpm i
-pnpm tw
-```
-
-### Local Development
-
-```bash
-cargo tauri dev
-```
-
-### Format Leptos Macro
-
-```bash
-leptosfmt ./src/**/*.rs
-```
-
-## Manuals
-
-- [Trunk](https://trunkrs.dev/guide/)
-- [Leptos](https://book.leptos.dev/)
-- [Tauri](https://v2.tauri.app/concept/)
-
-## Notes
-
-- This user on the Hacker News post about the v2 RC's permission issues:
-[link](https://news.ycombinator.com/item?id=41145167)
 
 ## Future
 
@@ -70,4 +30,4 @@ leptosfmt ./src/**/*.rs
 
 ## License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
+This project is licensed under the Mozilla Public License - see [LICENSE](LICENSE) for details.

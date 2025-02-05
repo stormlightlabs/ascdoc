@@ -8,3 +8,5 @@ edition = "2021"
 iced = { version = "0.13.1", features = ["highlighter", "tokio", "debug"] }
 icondata = "0.5.0"
 tokio = { version = "1.43.0", features = ["fs"] }
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"
