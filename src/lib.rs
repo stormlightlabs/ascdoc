@@ -30,7 +30,9 @@ impl Fonts {
             family: self.family(),
             style: iced::font::Style::Normal,
             weight: match self {
-                Fonts::Xenon | Fonts::Argon | Fonts::Neon => iced::font::Weight::Medium,
+                Fonts::Xenon | Fonts::Argon | Fonts::Neon | Fonts::HKGrotesk => {
+                    iced::font::Weight::Medium
+                }
                 _ => iced::font::Weight::Normal,
             },
             stretch: iced::font::Stretch::Normal,
@@ -53,7 +55,7 @@ pub fn settings() -> iced::Settings {
             include_bytes!("../fonts/MonaspaceKryptonVarVF[wght,wdth,slnt].ttf").into(),
             include_bytes!("../fonts/HankenGrotesk-VariableFont_wght.ttf").into(),
         ],
-        default_font: Fonts::Neon.font(),
+        default_font: Fonts::HKGrotesk.font(),
         default_text_size: iced::Pixels(16.0),
         antialiasing: true,
         ..Default::default()

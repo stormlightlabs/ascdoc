@@ -1,14 +1,14 @@
-use iced::widget::text_editor::Action;
 use iced::widget::{button, container};
 use iced::{widget, Length};
 use iced::{
     widget::{row, text_editor, Column, Container, Text},
     Task, Theme,
 };
-use std::io::ErrorKind::{NotFound, Other};
+use std::io::ErrorKind::NotFound;
+use std::io::Write;
 use std::path::PathBuf;
 use std::{io, path::Path};
-use tokio::fs;
+use tokio::fs::{self, File};
 use tracing::Level;
 use tracing_subscriber;
 
@@ -35,7 +35,7 @@ struct Model {
     col: usize,
     word_wrap: bool,
     buffer: text_editor::Content,
-    // file: Option<PathBuf>,
+    file: Option<PathBuf>,
     loading: bool,
 }
 
@@ -49,16 +49,21 @@ impl Model {
     }
 }
 
+fn default_ws_directory() -> String {
+    let home = std::env::var("HOME").unwrap();
+    format!("{}/Documents/AscDocWorkspace", home)
+}
+
 impl Default for Model {
     fn default() -> Self {
         Model {
-            cwd: Path::new("~/Documents/AscDocWorkspace").to_path_buf(),
+            cwd: PathBuf::from(default_ws_directory()),
             ln: 1,
             col: 1,
             word_wrap: false,
             buffer: text_editor::Content::new(),
             loading: true,
-            // file: None,
+            file: None,
         }
     }
 }
@@ -67,12 +72,13 @@ impl Default for Model {
 #[derive(Debug, Clone)]
 enum Message {
     CursorMoved(text_editor::Action),
+    Setup(Result<bool, Error>),
+    CreateFirstNote(Result<(), Error>),
+    OpenFile(Result<PathBuf, Error>),
+    SetBuffer(Result<(), Error>),
     ToggleWrapped,
-    // SetWorkingDir,
-    // NewBuffer,
-    // OpenFile,
+    // SetWorkingDir(String),
     // SaveFile,
-    Setup(Result<String, Error>),
     // FileOpened(Result<(PathBuf, Arc<String>), Error>),
     // FileSaved(Result<PathBuf, Error>),
 }
@@ -89,12 +95,6 @@ struct AscDoc {
     state: Model,
 }
 
-#[derive(Debug, Clone)]
-struct Pos {
-    ln: usize,
-    col: usize,
-}
-
 impl AscDoc {
     fn new() -> (Self, Task<Message>) {
         (
@@ -102,50 +102,38 @@ impl AscDoc {
                 state: Model::new(),
             },
             Task::batch([
-                Task::perform(set_cwd(), Message::Setup),
+                Task::perform(setup_ws(), Message::Setup),
                 widget::focus_next(),
             ]),
         )
-    }
-
-    fn update_position(&mut self, pos: Pos) -> Task<Message> {
-        self.state.ln = pos.ln;
-        self.state.col = pos.col;
-
-        Task::none()
-    }
-
-    fn toggle_wrapped(&mut self) -> Task<Message> {
-        self.state.word_wrap = !self.state.word_wrap;
-
-        Task::none()
-    }
-
-    fn cwd(&self) -> String {
-        let home = std::env::var("HOME").unwrap();
-        let cwd = self.state.cwd.to_str().unwrap();
-
-        match cwd.split_once(home.as_str()) {
-            Some(dirs) => {
-                let ws_dir = dirs.1;
-                format!("~{ws_dir}")
-            }
-            None => "Not found!".to_string(),
-        }
     }
 
     fn theme(&self) -> Theme {
         Theme::TokyoNightStorm
     }
 
-    fn handle_editor_action(&mut self, act: Action) -> Task<Message> {
-        let cursor = self.state.buffer.cursor_position();
-        match act {
-            _ => self.update_position(Pos {
-                ln: cursor.0,
-                col: cursor.1,
-            }),
+    fn cwd(&self) -> String {
+        let cwd = self.state.cwd.to_str();
+        cwd.unwrap().to_string()
+    }
+
+    fn create_first_note(&mut self, created: bool) -> Task<Message> {
+        tracing::debug!("set working/ws dir to {}", self.cwd());
+
+        self.state.loading = false;
+
+        if created {
+            Task::perform(create_first_note(self.cwd()), Message::CreateFirstNote)
+        } else {
+            Task::none()
         }
+    }
+
+    fn set_buffer(&mut self, fpath: Option<PathBuf>) -> Task<Message> {
+        if let Some(filepath) = fpath {
+            self.state.file = Some(filepath)
+        }
+        Task::perform(set_buffer(), Message::SetBuffer)
     }
 }
 
@@ -153,18 +141,28 @@ impl AscDoc {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Setup(res) => match res {
-                Ok(val) => {
-                    tracing::debug!("working directory set to {val}");
-                    self.state.cwd = Path::new(&val).to_path_buf();
-                    self.state.loading = false;
-
-                    Task::none()
-                }
                 Err(_) => Task::none(),
+                Ok(created) => self.create_first_note(created),
             },
-            Message::CursorMoved(act) => self.handle_editor_action(act),
-            Message::ToggleWrapped => self.toggle_wrapped(),
-            // _ => Task::none(),
+            Message::CursorMoved(_act) => {
+                let cursor = self.state.buffer.cursor_position();
+                self.state.ln = cursor.0;
+                self.state.col = cursor.1;
+                Task::none()
+            }
+            Message::CreateFirstNote(_res) => match self.state.loading {
+                true => Task::none(),
+                false => Task::perform(open_file(), Message::OpenFile),
+            },
+            Message::ToggleWrapped => {
+                self.state.word_wrap = !self.state.word_wrap;
+                Task::none()
+            }
+            Message::OpenFile(res) => match res {
+                Err(_) => Task::none(),
+                Ok(filepath) => self.set_buffer(Some(filepath)),
+            },
+            Message::SetBuffer(_res) => Task::none(),
         }
     }
 
@@ -175,8 +173,6 @@ impl AscDoc {
                 button("Wrap").on_press(Message::ToggleWrapped),
                 button("Toolbar Item 1"),
                 button("Toolbar Item 2"),
-                // Debugging
-                Text::new(self.cwd())
             ]
             .spacing(10),
         )
@@ -225,26 +221,69 @@ impl AscDoc {
 /// with a README.md (TODO: or adoc file)
 ///
 /// TODO: Remove hardcoded dir
-async fn set_cwd() -> Result<String, Error> {
+async fn setup_ws() -> Result<bool, Error> {
     tracing::debug!("setting current working directory");
 
     let home = std::env::var("HOME").unwrap();
-    let path_str = format!("{}/Documents/AscDocWorkspace", home);
-    let path = Path::new(&path_str);
+    let p = format!("{}/Documents/AscDocWorkspace", home);
+    let path = Path::new(&p);
+    let disp = path.display();
 
     match fs::metadata(&path).await {
-        Ok(_) => Ok(path_str.to_string()),
-        Err(e) => match e.kind() {
-            NotFound => {
-                if let Ok(_res) = fs::create_dir_all(path).await {
-                    tracing::debug!("created ws dir at {path_str}");
-
-                    Ok(path_str.to_string())
-                } else {
-                    Err(Error::IoError(NotFound))
+        Err(err) => match err.kind() {
+            NotFound => match fs::create_dir_all(path).await {
+                Err(why) => {
+                    tracing::error!("couldn't create {} because {}", disp, why);
+                    Err(Error::IoError(why.kind()))
                 }
+                Ok(_) => {
+                    tracing::debug!("created workspace dir at {}", disp);
+                    Ok(true)
+                }
+            },
+            why => {
+                tracing::error!("couldn't get metadata for {} because {}", disp, err);
+                Err(Error::IoError(why))
             }
-            _ => Err(Error::IoError(Other)),
         },
+        Ok(_) => {
+            tracing::debug!("{} already present", disp);
+            Ok(false)
+        }
     }
+}
+
+/// Creates a README.adoc file in the root of the workspace directory. This should
+/// only occur when the directory is created.
+async fn create_first_note(ws_dir: String) -> Result<(), Error> {
+    let p = format!("{}/{}/README.adoc", std::env::var("HOME").unwrap(), ws_dir);
+    let path = Path::new(&p);
+    let disp = path.display();
+    let content: &str = "= Welcome to AscDoc";
+
+    let mut file = match File::create(&path).await {
+        Err(why) => {
+            tracing::error!("couldn't create {}: {}", disp, why);
+            return Err(Error::IoError(why.kind()));
+        }
+        Ok(file) => file.into_std().await,
+    };
+
+    match file.write_all(content.as_bytes()) {
+        Err(why) => {
+            tracing::error!("couldn't write to {}: {}", disp, why);
+            Err(Error::IoError(why.kind()))
+        }
+        Ok(_) => {
+            tracing::debug!("successfully {} wrote to {}", content, disp);
+            Ok(())
+        }
+    }
+}
+
+async fn open_file() -> Result<PathBuf, Error> {
+    Ok(PathBuf::new())
+}
+async fn set_buffer() -> Result<(), Error> {
+    Ok(())
 }

@@ -1,5 +1,9 @@
 # Chapter 1
 
+## What is Iced?
+
+Iced is a cross-platform GUI library for Rust, inspired by Elm.
+
 ## GUI Elements
 
 A GUI application is generally composed of three fundamental parts: widgets,
@@ -74,3 +78,11 @@ work as expected but the weight variant medium goes to a fallback.
 See [this](https://github.com/iced-rs/iced/issues/2613) and [this](https://github.com/iced-rs/iced/issues/2060).
 My solution to this was to instead store the medium weight otf files instead of
 the variable weight ttf files for the Monaspace fonts.
+
+## Tasks
+
+From the doc comments:
+> Concurrent actions performed by the iced runtime
+>
+> "`Task` must be returned to the runtime to take effect; normally in your
+> `update` or `new` functions."

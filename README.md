@@ -19,6 +19,16 @@ cargo build
 cargo run
 ```
 
+## Book
+
+There are a lot of posts I've seen about iced being [difficult](https://www.reddit.com/r/rust/comments/1445lqd/iced_is_hard_to_learn/)
+to learn. In fact, the [disclaimer](https://docs.rs/iced/0.13.1/iced/#disclaimer)
+even mentions that the book is incomplete but asserts that the library adheres to
+Rust paradigms and the Elm architecture. As a new Rust developer, I appreciate
+the candidness and challenge but also want to make the learning curve easier for
+others. Plus, what better way to learn than to teach? All that to say, I'm
+storing my notes and providing some explanations in [book](docs/src/SUMMARY.md).
+
 ## Future
 
 ### Integrations
