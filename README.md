@@ -19,6 +19,15 @@ cargo build
 cargo run
 ```
 
+### Syntax Highlighting
+
+Syntax highlighting requires the tree-sitter markdown grammar. This can be vendored into
+the repository. To vendor the grammar, run the following command:
+
+```bash
+git clone https://github.com/tree-sitter-grammars/tree-sitter-markdown.git vendor/tree-sitter-markdown --depth 1
+```
+
 ## Book
 
 There are a lot of posts I've seen about iced being [difficult](https://www.reddit.com/r/rust/comments/1445lqd/iced_is_hard_to_learn/)

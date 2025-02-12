@@ -7,19 +7,12 @@ Iced is a cross-platform GUI library for Rust, inspired by Elm.
 ## GUI Elements
 
 A GUI application is generally composed of three fundamental parts: widgets,
-interactions, and state.
-    - A widget is a distinct visual element of a a user interface.
-    - An interaction is an action that can be triggered by some widgets.
-    - The state represents the attributes or information of a user interface.
+interactions, and state. - A widget is a distinct visual element of a a user interface. - An interaction is an action that can be triggered by some widgets. - The state represents the attributes or information of a user interface.
 
 ### Elm Architecture
 
 The Elm Architecture, used primarily as a way to build web applications, adds a
-more precise abstraction to describe for its fundamental parts:
-    - An application's state is called a `Model`.
-    - Interactions are called `Messages`.
-    - Updates are state mutations, dictated by the `Messages`.
-    - A View is a function of state (`Model`) that returns a widget.
+more precise abstraction to describe for its fundamental parts: - An application's state is called a `Model`. - Interactions are called `Messages`. - Updates are state mutations, dictated by the `Messages`. - A View is a function of state (`Model`) that returns a widget.
 
 ## Containers with Expanded Size
 
@@ -82,7 +75,20 @@ the variable weight ttf files for the Monaspace fonts.
 ## Tasks
 
 From the doc comments:
+
 > Concurrent actions performed by the iced runtime
 >
 > "`Task` must be returned to the runtime to take effect; normally in your
 > `update` or `new` functions."
+
+## Widgets
+
+### Text
+
+### TextEditor
+
+### Button
+
+### Row
+
+### Column

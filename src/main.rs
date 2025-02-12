@@ -9,12 +9,14 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::{io, path::Path};
+use syntax::MarkdownParser;
 use tokio::fs::{self, File};
 use tracing::Level;
 use tracing_subscriber;
 use widgets::spacer;
 
 mod settings;
+mod syntax;
 mod widgets;
 
 pub fn main() -> iced::Result {
@@ -33,7 +35,6 @@ pub fn main() -> iced::Result {
 }
 
 /// Application State
-#[derive(Debug)]
 struct Model {
     cwd: PathBuf,
     file: Option<PathBuf>,
@@ -43,6 +44,7 @@ struct Model {
     word_wrap: bool,
     loading: bool,
     modified: bool,
+    parser: MarkdownParser,
 }
 
 impl Model {
@@ -75,6 +77,7 @@ impl Default for Model {
             loading: true,
             modified: false,
             buffer: text_editor::Content::new(),
+            parser: MarkdownParser::new().unwrap(),
         }
     }
 }
@@ -99,7 +102,7 @@ pub enum Error {
     IoError(io::ErrorKind),
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 struct AscDoc {
     state: Model,
 }
@@ -134,14 +137,14 @@ impl AscDoc {
                 Err(_) => Task::none(),
                 Ok(_) => {
                     let ws_dir = self.cwd();
-                    let fpath = format!("{}/README.adoc", ws_dir);
+                    let fpath = format!("{}/README.md", ws_dir);
 
                     tracing::debug!("set working/ws dir to {}", ws_dir);
 
                     self.state.loading = false;
 
                     // When the workspace directory is created, we create an
-                    // empty initial file or open a README.adoc file.
+                    // empty initial file or open a README.md file.
                     Task::perform(open_file(fpath), Message::BufferSet)
                 }
             },
@@ -281,7 +284,7 @@ async fn setup_ws() -> Result<bool, Error> {
     }
 }
 
-/// Creates or reads a README.adoc file in the root of the workspace directory
+/// Creates or reads a README.md file in the root of the workspace directory
 async fn open_file(filepath_str: String) -> Result<(PathBuf, Arc<String>), Error> {
     tracing::debug!("opening file {}", filepath_str);
 
