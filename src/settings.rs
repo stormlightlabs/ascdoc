@@ -1,23 +1,26 @@
+/// Settings module
+///
+// TODO: Change VF fonts to fixed weight variants
 use iced::{font::Family, window::Position, Font, Size};
 
-pub enum Fonts {
-    Neon,
-    Argon,
-    Radon,
-    Xenon,
-    Krypton,
+pub enum LocalFont {
+    _Neon,
+    _Argon,
+    _Radon,
+    _Xenon,
+    _Krypton,
     HKGrotesk,
 }
 
-impl Fonts {
+impl LocalFont {
     fn to_str(&self) -> &'static str {
         match self {
-            Fonts::Neon => "Monaspace Neon",
-            Fonts::Argon => "Monaspace Argon",
-            Fonts::Xenon => "Monaspace Xenon",
-            Fonts::Radon => "Monaspace Radon Var",
-            Fonts::Krypton => "Monaspace Krypton Var",
-            Fonts::HKGrotesk => "Hanken Grotesk",
+            LocalFont::_Neon => "Monaspace Neon",
+            LocalFont::_Argon => "Monaspace Argon",
+            LocalFont::_Xenon => "Monaspace Xenon",
+            LocalFont::_Radon => "Monaspace Radon Var",
+            LocalFont::_Krypton => "Monaspace Krypton Var",
+            LocalFont::HKGrotesk => "Hanken Grotesk",
         }
     }
 
@@ -30,9 +33,10 @@ impl Fonts {
             family: self.family(),
             style: iced::font::Style::Normal,
             weight: match self {
-                Fonts::Xenon | Fonts::Argon | Fonts::Neon | Fonts::HKGrotesk => {
-                    iced::font::Weight::Medium
-                }
+                LocalFont::_Xenon
+                | LocalFont::_Argon
+                | LocalFont::_Neon
+                | LocalFont::HKGrotesk => iced::font::Weight::Medium,
                 _ => iced::font::Weight::Normal,
             },
             stretch: iced::font::Stretch::Normal,
@@ -41,7 +45,12 @@ impl Fonts {
 }
 
 /// Application settings
-pub fn settings() -> iced::Settings {
+pub fn application(font_selection: Option<LocalFont>) -> iced::Settings {
+    let font = match font_selection {
+        None => LocalFont::HKGrotesk.font(),
+        Some(f) => f.font(),
+    };
+
     iced::Settings {
         fonts: vec![
             include_bytes!("../fonts/MonaspaceXenon-Medium.otf").into(),
@@ -50,19 +59,18 @@ pub fn settings() -> iced::Settings {
             include_bytes!("../fonts/MonaspaceArgon-MediumItalic.otf").into(),
             include_bytes!("../fonts/MonaspaceNeon-Medium.otf").into(),
             include_bytes!("../fonts/MonaspaceNeon-MediumItalic.otf").into(),
-            // TODO: Change to fixed weight variants
             include_bytes!("../fonts/MonaspaceRadonVarVF[wght,wdth,slnt].ttf").into(),
             include_bytes!("../fonts/MonaspaceKryptonVarVF[wght,wdth,slnt].ttf").into(),
             include_bytes!("../fonts/HankenGrotesk-VariableFont_wght.ttf").into(),
         ],
-        default_font: Fonts::HKGrotesk.font(),
+        default_font: font,
         default_text_size: iced::Pixels(16.0),
         antialiasing: true,
         ..Default::default()
     }
 }
 
-pub fn window_settings() -> iced::window::Settings {
+pub fn window() -> iced::window::Settings {
     iced::window::Settings {
         position: Position::Centered,
         decorations: true,
