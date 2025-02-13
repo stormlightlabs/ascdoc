@@ -35,6 +35,22 @@ pub fn main() -> iced::Result {
         .run_with(AscDoc::new)
 }
 
+enum FileType {
+    PlainText,
+    AsciiDoc,
+    Markdown,
+}
+
+impl FileType {
+    fn as_str(&self) -> &str {
+        match self {
+            Self::AsciiDoc => "adoc",
+            Self::Markdown => "md",
+            _ => "txt",
+        }
+    }
+}
+
 /// Application State
 struct Model {
     cwd: PathBuf,
@@ -45,7 +61,7 @@ struct Model {
     word_wrap: bool,
     loading: bool,
     modified: bool,
-    extension: String,
+    extension: FileType,
     toast: Option<Toast>,
 }
 
@@ -79,7 +95,7 @@ impl Default for Model {
             loading: true,
             modified: false,
             buffer: text_editor::Content::new(),
-            extension: String::from("txt"),
+            extension: FileType::PlainText,
             toast: None,
         }
     }
@@ -164,9 +180,8 @@ impl AscDoc {
                 Ok(_) => {
                     self.state.loading = false;
 
-                    // When the workspace directory is created, we create an
-                    // empty initial file or open a README.md file.
-                    // Task::perform(open_file(fpath), Message::BufferSet)
+                    // When the workspace directory is created, we create
+                    // an empty initial file or open a README.md file.
                     let ws_dir = self.cwd();
                     let fpath = format!("{}/README.md", ws_dir);
 
@@ -204,8 +219,12 @@ impl AscDoc {
 
                     self.state.buffer = text_editor::Content::with_text(&contents);
                     self.state.extension = match path.extension() {
-                        Some(ext) => ext.to_str().unwrap().into(),
-                        None => "txt".to_string(),
+                        Some(ext) => match ext.to_str().unwrap() {
+                            "adoc" => FileType::AsciiDoc,
+                            "md" => FileType::Markdown,
+                            _ => FileType::PlainText,
+                        },
+                        None => FileType::PlainText,
                     };
                     self.state.file = Some(path_buf);
 
@@ -346,7 +365,10 @@ impl AscDoc {
                     text_editor(&self.state.buffer)
                         .font(LocalFont::Neon.font())
                         .placeholder("Type something here...")
-                        .highlight("md", iced::highlighter::Theme::Base16Mocha)
+                        .highlight(
+                            self.state.extension.as_str(),
+                            iced::highlighter::Theme::Base16Mocha,
+                        )
                         .on_action(Message::CursorMoved)
                         .height(Length::Fill),
                 )
