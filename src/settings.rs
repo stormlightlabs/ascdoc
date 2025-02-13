@@ -1,21 +1,21 @@
 /// Settings module
 ///
-// TODO: Change VF fonts to fixed weight variants
 use iced::{font::Family, window::Position, Font, Size};
 
+// TODO: Change VF fonts to fixed weight variants
 pub enum LocalFont {
-    _Neon,
+    Neon,
     _Argon,
     _Radon,
-    _Xenon,
     _Krypton,
+    _Xenon,
     HKGrotesk,
 }
 
 impl LocalFont {
     fn to_str(&self) -> &'static str {
         match self {
-            LocalFont::_Neon => "Monaspace Neon",
+            LocalFont::Neon => "Monaspace Neon",
             LocalFont::_Argon => "Monaspace Argon",
             LocalFont::_Xenon => "Monaspace Xenon",
             LocalFont::_Radon => "Monaspace Radon Var",
@@ -35,7 +35,7 @@ impl LocalFont {
             weight: match self {
                 LocalFont::_Xenon
                 | LocalFont::_Argon
-                | LocalFont::_Neon
+                | LocalFont::Neon
                 | LocalFont::HKGrotesk => iced::font::Weight::Medium,
                 _ => iced::font::Weight::Normal,
             },

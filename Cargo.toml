@@ -3,7 +3,6 @@ name = "ascdoc-ui"
 version = "0.1.0"
 edition = "2021"
 
-# See https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 iced = { version = "0.13.1", features = ["highlighter", "tokio", "debug"] }
 icondata = "0.5.0"
