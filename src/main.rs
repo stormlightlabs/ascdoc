@@ -1,17 +1,16 @@
-use iced::widget::container::Style;
-use iced::widget::{button, container};
-use iced::{widget, Background, Length};
-use iced::{
-    widget::{row, text_editor, Column, Container, Text},
-    Task, Theme,
+use iced::widget::{
+    button, container, focus_next, row, svg, text, text_editor, Column, Container, Svg,
+    Text,
 };
+use iced::{alignment, Background, Length, Task, Theme};
 use settings::LocalFont;
-use std::fs::OpenOptions;
-use std::io::ErrorKind::NotFound;
-use std::io::{Read, Write};
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::{io, path::Path};
+
+use std::{
+    fs::OpenOptions,
+    io::{ErrorKind, Read, Write},
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tokio::fs::{self, File};
 use tracing::Level;
 use tracing_subscriber;
@@ -51,6 +50,57 @@ impl FileType {
     }
 }
 
+#[derive(Debug)]
+enum Icon {
+    FolderOpen,
+    FolderClosed,
+    MDFile,
+    ADocFile,
+}
+
+impl Icon {
+    fn to_string(self) -> String {
+        let icon = match self {
+            Icon::FolderClosed => icondata::TbFolder,
+            Icon::FolderOpen => icondata::TbFolderOpen,
+            Icon::MDFile => icondata::BiFileMdSolid,
+            Icon::ADocFile => icondata::BiFileDocSolid,
+        };
+
+        let markup = match icon.fill {
+            Some(fill) => maud::html! {
+                svg xmlns="http://www.w3.org/2000/svg"
+                    stroke="currentColor"
+                    fill=(fill) {
+                    (maud::PreEscaped(icon.data))
+                }
+            },
+            None => maud::html! {
+                svg xmlns="http://www.w3.org/2000/svg" {
+                    (maud::PreEscaped(icon.data))
+                }
+            },
+        };
+
+        markup.into_string()
+    }
+}
+
+impl Into<svg::Handle> for Icon {
+    fn into(self) -> svg::Handle {
+        let data = self.to_string().as_bytes().to_owned();
+        svg::Handle::from_memory(data)
+    }
+}
+
+impl Icon {
+    fn svg<'a>(self) -> Svg<'a> {
+        Svg::new(self).width(20).style(|_, _| svg::Style {
+            color: Some(iced::Color::WHITE),
+        })
+    }
+}
+
 /// Application State
 struct Model {
     cwd: PathBuf,
@@ -79,6 +129,7 @@ impl Model {
     }
 }
 
+// TODO: Will this work on windows?
 fn default_ws_directory() -> String {
     let home = std::env::var("HOME").unwrap();
     format!("{}/Documents/AscDocWorkspace", home)
@@ -120,6 +171,17 @@ impl Toast {
             Self::Fail(m) => m,
         }
     }
+
+    fn widget<'a>(&'a self) -> Text<'a> {
+        match self {
+            Toast::Success(m) => {
+                Text::new(m).color(iced::Color::parse("#22c55e").unwrap())
+            }
+            Toast::Fail(m) => {
+                Text::new(m).color(iced::Color::parse("#e11d48").unwrap())
+            }
+        }
+    }
 }
 
 /// Application Interactions
@@ -141,7 +203,7 @@ enum Message {
 #[derive(Debug, Clone)]
 pub enum Error {
     DialogClosed,
-    IoError(io::ErrorKind),
+    IoError(ErrorKind),
 }
 
 #[derive(Default)]
@@ -157,7 +219,7 @@ impl AscDoc {
             },
             Task::batch([
                 Task::perform(setup_ws(), Message::SetupCompleted),
-                widget::focus_next(),
+                focus_next(),
             ]),
         )
     }
@@ -193,13 +255,14 @@ impl AscDoc {
             Message::CursorMoved(action) => {
                 tracing::debug!("action: {:?}", action);
 
-                let cursor = self.state.buffer.cursor_position();
-
                 self.state.modified = self.state.modified || action.is_edit();
-                self.state.ln = cursor.0;
-                self.state.col = cursor.1;
 
                 self.state.buffer.perform(action);
+
+                let cursor = self.state.buffer.cursor_position();
+
+                self.state.ln = cursor.0;
+                self.state.col = cursor.1;
 
                 Task::none()
             }
@@ -292,29 +355,27 @@ impl AscDoc {
     fn view(&self) -> Container<Message> {
         tracing::debug!("current position {:?}", self.state.position());
 
-        let toast_message: Text = match &self.state.toast {
-            Some(toast) => match toast {
-                Toast::Success(m) => {
-                    Text::new(m).color(iced::Color::parse("#22c55e").unwrap())
-                }
-                Toast::Fail(m) => {
-                    Text::new(m).color(iced::Color::parse("#e11d48").unwrap())
-                }
-            },
-            None => Text::new(""),
+        let toast_message: Option<Text> = match &self.state.toast {
+            Some(toast) => Some(toast.widget()),
+            None => None,
         };
 
-        let status = if self.state.modified { "Unsaved" } else { "" };
+        let status_message = if self.state.modified {
+            Some(Text::new("Unsaved"))
+        } else {
+            None
+        };
+
         let status_bar = Container::new(
             row![
-                Text::new(status),
                 Column::new()
                     .align_x(iced::Alignment::Center)
                     .width(Length::Fill)
-                    .push(toast_message),
+                    .push_maybe(status_message)
+                    .push_maybe(toast_message),
                 Container::new(Text::new(self.state.render_pos()))
-                    .style(|t| Style {
-                        // TODO: This can be a helper
+                    // TODO: This can be a helper
+                    .style(|t| container::Style {
                         background: Some(Background::Color(
                             iced::Color::parse("#9ca3af").unwrap()
                         )),
@@ -350,14 +411,47 @@ impl AscDoc {
 
         let sidebar = Container::new(
             Column::new()
-                .push(Text::new("Sidebar Item 1"))
-                .push(Text::new("Sidebar Item 2"))
-                .spacing(10),
+                .push(
+                    row![
+                        Icon::FolderOpen.svg(),
+                        Text::new("Sidebar Item 1")
+                            .align_y(alignment::Vertical::Center)
+                    ]
+                    .spacing(8)
+                    .align_y(alignment::Vertical::Center),
+                )
+                .push(
+                    row![
+                        Icon::FolderClosed.svg(),
+                        Text::new("Sidebar Item 2")
+                            .align_y(alignment::Vertical::Center)
+                    ]
+                    .padding(iced::padding::left(16))
+                    .spacing(8)
+                    .align_y(alignment::Vertical::Center),
+                )
+                .push(
+                    row![
+                        Icon::MDFile.svg(),
+                        Text::new("Sidebar Item 3")
+                            .align_y(alignment::Vertical::Center)
+                    ]
+                    .padding(iced::padding::left(16))
+                    .spacing(8)
+                    .align_y(alignment::Vertical::Center),
+                )
+                .push(
+                    row![Icon::ADocFile.svg(), Text::new("Sidebar Item 3")]
+                        .padding(iced::padding::left(16))
+                        .spacing(8)
+                        .align_y(alignment::Vertical::Center),
+                )
+                .spacing(8),
         )
         .style(container::bordered_box)
         .width(Length::FillPortion(1))
         .height(Length::Fill)
-        .padding(10);
+        .padding(12);
 
         let main_content = Container::new(
             Column::new()
@@ -369,6 +463,11 @@ impl AscDoc {
                             self.state.extension.as_str(),
                             iced::highlighter::Theme::Base16Mocha,
                         )
+                        .wrapping(if self.state.word_wrap {
+                            text::Wrapping::WordOrGlyph
+                        } else {
+                            text::Wrapping::None
+                        })
                         .on_action(Message::CursorMoved)
                         .height(Length::Fill),
                 )
@@ -420,7 +519,7 @@ async fn setup_ws() -> Result<bool, Error> {
 
     match fs::metadata(&path).await {
         Err(err) => match err.kind() {
-            NotFound => match fs::create_dir_all(path).await {
+            ErrorKind::NotFound => match fs::create_dir_all(path).await {
                 Err(why) => {
                     tracing::error!("couldn't create {} because {}", disp, why);
                     Err(Error::IoError(why.kind()))
@@ -458,7 +557,7 @@ async fn open_file(filepath_str: String) -> Result<(PathBuf, Arc<String>), Error
             Err(why) => Err(Error::IoError(why.kind())),
         },
         Err(why) => match why.kind() {
-            NotFound => match File::create(&filepath).await {
+            ErrorKind::NotFound => match File::create(&filepath).await {
                 Err(why) => {
                     tracing::error!("couldn't create {}: {}", disp, why);
                     Err(Error::IoError(why.kind()))

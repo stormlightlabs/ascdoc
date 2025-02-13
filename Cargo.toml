@@ -4,8 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-iced = { version = "0.13.1", features = ["highlighter", "tokio", "debug"] }
+iced = { version = "0.13.1", features = [
+    "highlighter",
+    "tokio",
+    "debug",
+    "svg",
+] }
 icondata = "0.5.0"
+maud = "0.27.0"
 tokio = { version = "1.43.0", features = ["fs"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
