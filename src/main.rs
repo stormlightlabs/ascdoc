@@ -14,10 +14,9 @@ use std::{
 use tokio::fs::{self, File};
 use tracing::Level;
 use tracing_subscriber;
-use widgets::spacer;
 
+mod explorer;
 mod settings;
-mod widgets;
 
 pub fn main() -> iced::Result {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -56,6 +55,7 @@ enum Icon {
     FolderClosed,
     MDFile,
     ADocFile,
+    GenericFile,
 }
 
 impl Icon {
@@ -65,6 +65,7 @@ impl Icon {
             Icon::FolderOpen => icondata::TbFolderOpen,
             Icon::MDFile => icondata::BiFileMdSolid,
             Icon::ADocFile => icondata::BiFileDocSolid,
+            Icon::GenericFile => icondata::BiFileSolid,
         };
 
         let markup = match icon.fill {
@@ -113,6 +114,7 @@ struct Model {
     modified: bool,
     extension: FileType,
     toast: Option<Toast>,
+    explorer: Option<explorer::TreeNode>,
 }
 
 impl Model {
@@ -148,6 +150,7 @@ impl Default for Model {
             buffer: text_editor::Content::new(),
             extension: FileType::PlainText,
             toast: None,
+            explorer: None,
         }
     }
 }
@@ -194,7 +197,7 @@ enum Message {
     SaveFile,
     ShowToast(Result<Toast, Error>),
     HideToast(Result<(), Error>),
-    // OpenDir - Perform Action
+    OpenDir(Result<explorer::TreeNode, Error>),
     // SetWorkingDir, - Update State
     // CreateFile
 }
@@ -249,7 +252,10 @@ impl AscDoc {
 
                     tracing::debug!("set working/ws dir to {}", ws_dir);
 
-                    Task::perform(open_file(fpath), Message::FileOpened)
+                    Task::batch([
+                        Task::perform(open_file(fpath), Message::FileOpened),
+                        Task::perform(walk_dir(ws_dir), Message::OpenDir),
+                    ])
                 }
             },
             Message::CursorMoved(action) => {
@@ -294,6 +300,13 @@ impl AscDoc {
                     Task::none()
                 }
             },
+            Message::OpenDir(res) => {
+                if let Ok(tree) = res {
+                    self.state.explorer = Some(tree)
+                }
+
+                Task::none()
+            }
             Message::SaveFile => {
                 let path = self.state.file.as_mut().unwrap().as_path();
                 let text = self.state.buffer.text();
@@ -355,6 +368,9 @@ impl AscDoc {
     fn view(&self) -> Container<Message> {
         tracing::debug!("current position {:?}", self.state.position());
 
+        //=============================================================================
+        // Status Bar
+        //=============================================================================
         let toast_message: Option<Text> = match &self.state.toast {
             Some(toast) => Some(toast.widget()),
             None => None,
@@ -381,15 +397,18 @@ impl AscDoc {
                         )),
                         ..container::rounded_box(t)
                     })
-                    .padding(iced::Padding::from([2, 3])),
+                    .padding(iced::Padding::from([1, 2])),
             ]
             .spacing(10),
         )
         .style(container::bordered_box)
         .width(Length::Fill)
-        .padding(10);
+        .padding(iced::Padding::from([4, 8]));
 
-        let save_file: Option<Message> = if self.state.modified {
+        //=============================================================================
+        // Toolbar
+        //=============================================================================
+        let save_message: Option<Message> = if self.state.modified {
             Some(Message::SaveFile)
         } else {
             None
@@ -397,96 +416,151 @@ impl AscDoc {
 
         let toolbar = Container::new(
             row![
-                button("Wrap").on_press(Message::ToggleWrapped),
-                button("Save").on_press_maybe(save_file),
-                button("Open"),
-                spacer(),
-                button("Learn")
+                Column::new()
+                    .push(
+                        row![
+                            button(
+                                Text::new("Wrap")
+                                    .align_x(alignment::Horizontal::Center)
+                            )
+                            .on_press(Message::ToggleWrapped)
+                            .width(Length::FillPortion(1)),
+                            button(
+                                Text::new("Save")
+                                    .align_x(alignment::Horizontal::Center)
+                            )
+                            .on_press_maybe(save_message)
+                            .width(Length::FillPortion(1)),
+                            button(
+                                Text::new("Open")
+                                    .align_x(alignment::Horizontal::Center)
+                            )
+                            .width(Length::FillPortion(1)),
+                        ]
+                        .spacing(4)
+                    )
+                    .width(Length::FillPortion(1))
+                    .padding(iced::padding::left(8)),
+                Column::new()
+                    .push(button("Learn"))
+                    .align_x(alignment::Horizontal::Right)
+                    .width(Length::FillPortion(3))
+                    .padding(iced::padding::right(8)),
             ]
-            .spacing(10),
+            .spacing(16)
+            .padding(iced::padding::top(4)),
         )
-        .style(container::bordered_box)
-        .width(Length::Fill)
-        .padding(10);
+        .style(container::transparent)
+        .width(Length::Fill);
 
+        //=============================================================================
+        // File Explorer
+        //=============================================================================
         let sidebar = Container::new(
-            Column::new()
-                .push(
-                    row![
-                        Icon::FolderOpen.svg(),
-                        Text::new("Sidebar Item 1")
-                            .align_y(alignment::Vertical::Center)
-                    ]
-                    .spacing(8)
-                    .align_y(alignment::Vertical::Center),
-                )
-                .push(
-                    row![
-                        Icon::FolderClosed.svg(),
-                        Text::new("Sidebar Item 2")
-                            .align_y(alignment::Vertical::Center)
-                    ]
-                    .padding(iced::padding::left(16))
-                    .spacing(8)
-                    .align_y(alignment::Vertical::Center),
-                )
-                .push(
-                    row![
-                        Icon::MDFile.svg(),
-                        Text::new("Sidebar Item 3")
-                            .align_y(alignment::Vertical::Center)
-                    ]
-                    .padding(iced::padding::left(16))
-                    .spacing(8)
-                    .align_y(alignment::Vertical::Center),
-                )
-                .push(
-                    row![Icon::ADocFile.svg(), Text::new("Sidebar Item 3")]
-                        .padding(iced::padding::left(16))
+            Container::new(match &self.state.explorer {
+                Some(root) => {
+                    let mut col = Column::new().push(
+                        row![
+                            Icon::FolderOpen.svg(),
+                            Text::new(&root.name).align_y(alignment::Vertical::Center)
+                        ]
                         .spacing(8)
                         .align_y(alignment::Vertical::Center),
-                )
-                .spacing(8),
-        )
-        .style(container::bordered_box)
-        .width(Length::FillPortion(1))
-        .height(Length::Fill)
-        .padding(12);
+                    );
 
-        let main_content = Container::new(
-            Column::new()
-                .push(
-                    text_editor(&self.state.buffer)
-                        .font(LocalFont::Neon.font())
-                        .placeholder("Type something here...")
-                        .highlight(
-                            self.state.extension.as_str(),
-                            iced::highlighter::Theme::Base16Mocha,
-                        )
-                        .wrapping(if self.state.word_wrap {
-                            text::Wrapping::WordOrGlyph
-                        } else {
-                            text::Wrapping::None
-                        })
-                        .on_action(Message::CursorMoved)
-                        .height(Length::Fill),
-                )
-                .spacing(10),
+                    for child in root.children.iter() {
+                        col = col.push(
+                            row![
+                                match child.entry_type {
+                                    explorer::NodeType::File => {
+                                        if let Some(ext) = child.path.extension() {
+                                            match ext.to_str().unwrap_or("txt") {
+                                                "md" => Icon::MDFile.svg(),
+                                                "adoc" => Icon::ADocFile.svg(),
+                                                _ => Icon::GenericFile.svg(),
+                                            }
+                                        } else {
+                                            Icon::GenericFile.svg()
+                                        }
+                                    }
+                                    _ => Icon::FolderClosed.svg(),
+                                },
+                                Text::new(&child.name)
+                                    .align_y(alignment::Vertical::Center)
+                            ]
+                            .padding(iced::padding::left(16))
+                            .spacing(16)
+                            .align_y(alignment::Vertical::Center),
+                        );
+                    }
+
+                    col.spacing(8)
+                }
+
+                None => Column::new().push(Text::new("Nada")),
+            })
+            .style(container::bordered_box)
+            .width(Length::FillPortion(1))
+            .height(Length::Fill)
+            .padding(12),
         )
-        .style(container::bordered_box)
-        .height(Length::Fill)
-        .width(Length::FillPortion(3))
-        .padding(10);
+        .style(container::transparent)
+        .padding(iced::padding::left(8));
+
+        //=============================================================================
+        // Text Editor
+        //=============================================================================
+        let editor = text_editor(&self.state.buffer)
+            .font(LocalFont::Neon.font())
+            .placeholder("Type something here...")
+            .highlight(
+                self.state.extension.as_str(),
+                iced::highlighter::Theme::Base16Mocha,
+            )
+            .wrapping(if self.state.word_wrap {
+                text::Wrapping::WordOrGlyph
+            } else {
+                text::Wrapping::None
+            })
+            .line_height(1.5)
+            .on_action(Message::CursorMoved)
+            .padding(8)
+            .height(Length::Fill);
+
+        let main_content = Container::new(Column::new().push(editor).spacing(10))
+            .style(container::transparent)
+            .height(Length::Fill)
+            .width(Length::FillPortion(3));
 
         Container::new(
             Column::new()
                 .push(toolbar)
-                .push(row![sidebar, main_content].spacing(20))
+                .push(
+                    row![sidebar, main_content.padding(iced::padding::right(8)),]
+                        .spacing(16),
+                )
                 .push(status_bar)
-                .spacing(20),
+                .spacing(8),
         )
-        .padding(20)
         .into()
+    }
+}
+
+async fn walk_dir(dir: String) -> Result<explorer::TreeNode, Error> {
+    let dir_path = PathBuf::from(dir);
+    match explorer::TreeNode::from_path(&dir_path) {
+        Ok(contents) => Ok(contents),
+        Err(why) => {
+            let disp = dir_path.display();
+
+            tracing::error!(
+                "failed to collect contents of {} because {}",
+                disp,
+                why.kind()
+            );
+
+            Err(Error::IoError(why.kind()))
+        }
     }
 }
 
