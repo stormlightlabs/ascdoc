@@ -1,5 +1,17 @@
 # Chapter 2
 
-## Highlighter
+## Text Editor
 
-### Using TreeSitter
+### Introduction
+
+### Managing Editor State
+
+### Syntax Highlighting
+
+To style the text_editor widget, iced uses an implementation of the syntect
+library, a Rust implementation of the Sublime text editors syntax highlighting
+engine.
+
+### Cursor Movement
+
+### Fonts
