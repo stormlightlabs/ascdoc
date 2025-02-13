@@ -466,13 +466,13 @@ async fn open_file(filepath_str: String) -> Result<(PathBuf, Arc<String>), Error
                 Ok(f) => {
                     let content: &str = "= Welcome to AscDoc";
                     let mut file = f.into_std().await;
-                    match file.write(content.as_bytes()) {
+                    match file.write_all(content.as_bytes()) {
                         Err(why) => {
                             tracing::error!("couldn't write to {}: {}", disp, why);
                             Err(Error::IoError(why.kind()))
                         }
-                        Ok(b) => {
-                            tracing::debug!("wrote {} bytes to {}", b, disp);
+                        Ok(_) => {
+                            tracing::debug!("wrote to {}", disp);
                             Ok((PathBuf::from(filepath), Arc::new(content.to_string())))
                         }
                     }
