@@ -238,9 +238,9 @@ impl AscDoc {
 
                 let mut file = OpenOptions::new().write(true).open(path).unwrap();
 
-                match file.write(text.as_bytes()) {
-                    Ok(b) => {
-                        tracing::debug!("wrote {} bytes to {}", b, disp);
+                match file.write_all(text.as_bytes()) {
+                    Ok(_) => {
+                        tracing::debug!("wrote {}", disp);
 
                         self.state.modified = false;
 
